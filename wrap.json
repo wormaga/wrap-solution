@@ -1,0 +1,20 @@
+{
+    "lastUpdate" : "2021-01-17T04:16:14Z",
+    "tools": [
+        {
+            "name": "litegallery",
+            "version": 0.3,
+            "files": [
+                {
+                    "location": "${HOME}/.cli-tools/litegallery/Cargo.toml",
+                    "url": "https://github.com/wormaga/.../.../.../Cargo.toml"                    
+                },
+                {
+                    "location": "${HOME}/.cli-tools/litegallery/src/main.rs",
+                    "url": "https://github.com/wormaga/.../.../.../main.rs"
+                }
+            ]
+        }
+    ]
+
+}
