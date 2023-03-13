@@ -6,12 +6,14 @@
             "version": 0.3,
             "files": [
                 {
-                    "location": "${HOME}/.cli-tools/litegallery/Cargo.toml",
-                    "url": "https://github.com/wormaga/.../.../.../Cargo.toml"                    
+                    "location": "",
+                    "filename": "Cargo.toml",
+                    "url": "https://raw.githubusercontent.com/wormaga/wrap-solution/main/litegallery/Cargo.toml"
                 },
                 {
-                    "location": "${HOME}/.cli-tools/litegallery/src/main.rs",
-                    "url": "https://github.com/wormaga/.../.../.../main.rs"
+                    "location": "src",
+                    "filename": "main.rs",
+                    "url": "https://raw.githubusercontent.com/wormaga/wrap-solution/main/litegallery/src/main.rs"
                 }
             ]
         }
