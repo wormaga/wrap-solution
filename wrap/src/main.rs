@@ -66,6 +66,74 @@ impl Tool {
 
         installed_version < latest_version
     }
+
+    pub fn install_description(&self) -> String {
+        if !self.is_installed() {
+            return "".to_string();
+        }
+
+        let output = Command::new(&self.name)
+            .arg("--version")
+            .output()
+            .unwrap();
+
+        let stdout = String::from_utf8(output.stdout).unwrap();
+
+        let installed_version = Version::parse(stdout.trim()).unwrap();
+        let latest_version = Version::parse(&self.version).unwrap();
+
+        if installed_version < latest_version {
+            return format!("(update available: {}-->{})", installed_version, latest_version);
+        }
+
+        if installed_version == latest_version {
+            return format!("(Latest installed {})", latest_version);
+        }
+
+        // if installed_version > latest_version {
+        //     return format!("(Latest installed {})", latest_version);
+        // }
+
+        return "".to_string()
+    }
+}
+
+impl Product {
+    pub fn filter_tools_by_user(&self) -> Vec<&Tool> {
+        // Print the list of tools with their indices
+        println!("Select one or more programs by their number (separated by space):");
+        for (i, tool) in self.tools.iter().enumerate() {
+            println!("{}) {} {}", i+1, tool.name, tool.install_description());
+        }
+
+        let mut selected_indices: Vec<usize>;
+        loop {
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).unwrap();
+            selected_indices = input
+                .trim()
+                .split(' ')
+                .map(|x| x.parse::<usize>().unwrap_or(usize::MAX))
+                .filter(|&x| x > 0 && x-1 < self.tools.len())
+                .collect();
+            if !selected_indices.is_empty() {
+                break;
+            }
+            println!("Invalid input. Try again:");
+        }
+        // println!("selected_indices {:#?}", selected_indices); //debug
+
+        // Filter tools by index
+        let filtered_tools = self
+            .tools
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| selected_indices.contains(&(i+1)))
+            .map(|(_, tool)| tool)
+            .collect::<Vec<_>>();
+
+        filtered_tools
+    }
 }
 
 #[tokio::main]
@@ -78,37 +146,19 @@ async fn main() -> Result<(), reqwest::Error> {
         .await?;
     //println!("{:#?}", product); //debug
 
+    let selected_tools = product.filter_tools_by_user();
 
-    // Extract the tool names into an array
-    let tool_names: Vec<&str> = product.tools.iter().map(|t| t.name.as_str()).collect();
-    //println!("{:?}", tool_names);//debug
-
-    let selected_strings = get_selected_strings(&tool_names);
-
-    // for string in selected_strings {
-    //     println!("{}", string); //debug
-    // }
-
-    if selected_strings.is_empty() {
+    if selected_tools.is_empty() {
         println!("No tools were selected. Exiting the program.");
         process::exit(0);
     }
 
-
-    for cli in selected_strings {
-        let found_tool : Option<&Tool> =  find_tool_by_name(&product.tools, &cli);
-        //TODO check if tool is installed
-        //TODO check if tool has the lates version
-        if let Some(found_tool) = found_tool {
-
-            if found_tool.is_update_available() {
-                //println!("Debug: update is available"); //debug
-                install_tool(&found_tool).await
-            } else {
-                println!("The latest version is installed.");
-            }
+    for tool in selected_tools {
+        if tool.is_update_available() {
+            //println!("Debug: update is available"); //debug
+            install_tool(&tool).await
         } else {
-            println!("Tool not found.");
+            println!("The latest version is installed.");
         }
     }
 
@@ -116,10 +166,10 @@ async fn main() -> Result<(), reqwest::Error> {
 }
 
 
-async fn install_tool(found_tool: &Tool) {
-    //println!("{:#?}", found_tool); //debug
+async fn install_tool(tool: &Tool) {
+    //println!("{:#?}", tool); //debug
 
-        let project_name = &found_tool.name;
+        let project_name = &tool.name;
 
         let home_dir = dirs::home_dir().expect("failed to get home directory");
         let bin_dir = home_dir.join(BIN);
@@ -148,7 +198,7 @@ async fn install_tool(found_tool: &Tool) {
         set_current_directory(&tool_dir);
 
         println!("Downloading up to date files from github");
-        for asset in &found_tool.files {
+        for asset in &tool.files {
             set_current_directory(&(tool_dir.join(&asset.location)));
 
 
@@ -188,41 +238,6 @@ async fn install_tool(found_tool: &Tool) {
         println!("{}", String::from_utf8_lossy(&output.stdout));
 
         println!("{} is installed.", &project_name);
-}
-
-fn find_tool_by_name<'a>(tools: &'a Vec<Tool>, name: &str) -> Option<&'a Tool> {
-    for tool in tools {
-        if tool.name == name {
-            return Some(tool);
-        }
-    }
-    None
-}
-
-
-fn get_selected_strings<'a>(strings: &[&'a str]) -> Vec<&'a str> {
-    println!("Select one or more programs by their number (separated by space):");
-    for (index, string) in strings.iter().enumerate() {
-        println!("{}) {}", index+1, string);
-    }
-
-    let mut selected_indices: Vec<usize>;
-    loop {
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        selected_indices = input
-            .trim()
-            .split(' ')
-            .map(|x| x.parse::<usize>().unwrap_or(usize::MAX))
-            .filter(|&x| x > 0 && x-1 < strings.len())
-            .collect();
-        if !selected_indices.is_empty() {
-            break;
-        }
-        println!("Invalid input. Try again:");
-    }
-
-    selected_indices.iter().map(|&i| strings[i-1]).collect()
 }
 
 fn set_current_directory(dir: &Path) {
