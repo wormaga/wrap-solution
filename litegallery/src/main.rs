@@ -7,47 +7,47 @@ use std::process::{Command, Stdio};
 use colored::Colorize;
 use spinners::{Spinner, Spinners};
 
-fn set_current_dir() -> bool { 
-    // Get the current working directory 
-    let current_dir = env::current_dir().unwrap(); 
-    println!("The current directory for search is: {}", 
+fn set_current_dir() -> bool {
+    // Get the current working directory
+    let current_dir = env::current_dir().unwrap();
+    println!("The current directory for search is: {}",
         format!("{}", current_dir.to_str().unwrap())
-        .green()); 
- 
-    // Prompt the user if they want to modify the path 
-    println!("{}", format!("Do you want to modify it? (y/N)").yellow()); 
- 
-    let mut input = String::new(); 
-    io::stdin().read_line(&mut input).unwrap(); 
- 
-    if input.trim() == "y" || input.trim() == "Y"{ 
-        println!("{}", format!("Enter the new path:").yellow()); 
- 
-        let mut new_path = String::new(); 
-        io::stdin().read_line(&mut new_path).unwrap(); 
- 
-        // Set the new working directory 
-        match env::set_current_dir(new_path.replace("\\","").trim()) { 
-            Ok(_) => { 
-                println!("The search directory is now: {}", 
+        .green());
+
+    // Prompt the user if they want to modify the path
+    println!("{}", format!("Do you want to modify it? (y/N)").yellow());
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+
+    if input.trim() == "y" || input.trim() == "Y"{
+        println!("{}", format!("Enter the new path:").yellow());
+
+        let mut new_path = String::new();
+        io::stdin().read_line(&mut new_path).unwrap();
+
+        // Set the new working directory
+        match env::set_current_dir(new_path.replace("\\","").trim()) {
+            Ok(_) => {
+                println!("The search directory is now: {}",
                 format!("{}", env::current_dir().unwrap().to_str().unwrap())
-                .green()); 
-                return true; 
-            }, 
-            Err(error) => { 
-                println!("Error setting new working directory: {}", error); 
-                println!("{}", format!("The new path for the working directory is incorrect. Please try again.").red()); 
-                return false; 
-            } 
-        } 
+                .green());
+                return true;
+            },
+            Err(error) => {
+                println!("Error setting new working directory: {}", error);
+                println!("{}", format!("The new path for the working directory is incorrect. Please try again.").red());
+                return false;
+            }
+        }
     }
 
-    println!("No changes made, search will perform in: {}", 
+    println!("No changes made, search will perform in: {}",
         format!("{}", env::current_dir().unwrap().to_str().unwrap())
-        .green()); 
- 
-    return true; 
-} 
+        .green());
+
+    return true;
+}
 
 fn open_directory(directory: &str) {
     // Use the `xdg-open` command on Linux and macOS
@@ -102,7 +102,7 @@ fn copy_files(filenames: Vec<String>, output_dir: &str) {
 
     // Create and start a spinner
     let mut sp = Spinner::new(Spinners::Line, "Coping files".into());
-    
+
     for filename in filenames {
         let file_path = Path::new(&filename);
 
@@ -192,7 +192,7 @@ fn get_filenames_and_extensions() -> (Vec<String>, Vec<String>) {
     let mut filenames_input = String::new();
     io::stdin().read_line(&mut filenames_input).unwrap();
     let mut filenames: Vec<&str> = filenames_input.split(',').map(|s| s.trim()).collect();
-  
+
     // If the list of filenames has less than two items, try to split the input string by spaces
     if filenames.len() < 2 {
         filenames = filenames_input.split(' ').map(|s| s.trim()).collect();
@@ -225,24 +225,26 @@ fn get_filenames_and_extensions() -> (Vec<String>, Vec<String>) {
 fn main() {
     // displaying version when "-v" or "--version" is passed
     let args: Vec<String> = env::args().collect();
-    let first_passed_argument = &args[1];
-    //print!("Inputs: {}", &first_passed_argument);
+    if args.len() > 1 {
+        let first_passed_argument = &args[1];
+        //print!("Inputs: {}", &first_passed_argument);
 
-    let version_parameter: String = String::from("--version");
-    let version_parameter_short: String = String::from("-v");
-    if first_passed_argument.eq(&version_parameter) || first_passed_argument.eq(&version_parameter_short) {
-        print!("{}", env!("CARGO_PKG_VERSION"));
-        process::exit(0);
+        let version_parameter: String = String::from("--version");
+        let version_parameter_short: String = String::from("-v");
+        if first_passed_argument.eq(&version_parameter) || first_passed_argument.eq(&version_parameter_short) {
+            print!("{}", env!("CARGO_PKG_VERSION"));
+            process::exit(0);
+        }
     }
 
 
     // Start of the program
     println!("Version: {}\n", env!("CARGO_PKG_VERSION"));
 
-    let mut success = false; 
-    while !success { 
-        success = set_current_dir(); 
-    } 
+    let mut success = false;
+    while !success {
+        success = set_current_dir();
+    }
 
     let (filenames, extensions) = get_filenames_and_extensions();
 	//println!("Filenames: {:?}", filenames);
@@ -253,12 +255,12 @@ fn main() {
 	println!("Generated filenames: {:?}", generated_filenames);
     let paths = find_files(generated_filenames);
     println!("{}", format!("Found {} files.", paths.len()).green());
-	
+
 	if !should_continue() {
         println!("Exiting...\n\n");
         process::exit(0);
     }
-	
+
 
     // Prompt the user for the output directory
     println!("{}", format!("Enter the output directory:").yellow());
@@ -268,7 +270,7 @@ fn main() {
     println!("The output directory is: \n    {}", format!("{}", output_dir).green());
 
     copy_files(paths, output_dir);
-	
+
     open_directory(output_dir);
 
     println!("Progrma finished, you can now close this window.\n\n");
