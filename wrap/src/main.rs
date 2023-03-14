@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::fs::File;
+use semver::Version;
 extern crate reqwest;
 
 
@@ -36,6 +37,36 @@ pub struct Asset {
     url: String,
 }
 
+impl Tool {
+    pub fn is_installed(&self) -> bool {
+        Command::new(&self.name)
+            .arg("--version")
+            .output()
+            .is_ok()
+    }
+
+    pub fn is_update_available(&self) -> bool {
+        if !self.is_installed() {
+            return true;
+        }
+
+        let output = Command::new(&self.name)
+            .arg("--version")
+            .output()
+            .unwrap();
+
+        let stdout = String::from_utf8(output.stdout).unwrap();
+
+        let installed_version = Version::parse(stdout.trim()).unwrap();
+        let latest_version = Version::parse(&self.version).unwrap();
+
+        if installed_version > latest_version {
+            println!("Something is wrong, installed {}, the latest available is {}.", installed_version, latest_version);
+        }
+
+        installed_version < latest_version
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), reqwest::Error> {
@@ -65,20 +96,29 @@ async fn main() -> Result<(), reqwest::Error> {
 
 
     for cli in selected_strings {
-        let found_tool =  find_tool_by_name(&product.tools, &cli);
+        let found_tool : Option<&Tool> =  find_tool_by_name(&product.tools, &cli);
         //TODO check if tool is installed
         //TODO check if tool has the lates version
-        install_tool(found_tool).await
+        if let Some(found_tool) = found_tool {
+
+            if found_tool.is_update_available() {
+                //println!("Debug: update is available"); //debug
+                install_tool(&found_tool).await
+            } else {
+                println!("The latest version is installed.");
+            }
+        } else {
+            println!("Tool not found.");
+        }
     }
 
     Ok(())
 }
 
 
-async fn install_tool(found_tool: Option<&Tool>) {
+async fn install_tool(found_tool: &Tool) {
     //println!("{:#?}", found_tool); //debug
 
-    if let Some(found_tool) = found_tool {
         let project_name = &found_tool.name;
 
         let home_dir = dirs::home_dir().expect("failed to get home directory");
@@ -147,11 +187,7 @@ async fn install_tool(found_tool: Option<&Tool>) {
         .expect("failed compile a project.");
         println!("{}", String::from_utf8_lossy(&output.stdout));
 
-        println!("Program finished.");
-
-    } else {
-        println!("Tool not found.");
-    }
+        println!("{} is installed.", &project_name);
 }
 
 fn find_tool_by_name<'a>(tools: &'a Vec<Tool>, name: &str) -> Option<&'a Tool> {

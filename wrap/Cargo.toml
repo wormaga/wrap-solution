@@ -10,3 +10,4 @@ reqwest = { version = "0.11.14", features = ["json"] }
 serde = { version = "1.0.155", features = ["derive"] }
 tokio = { version = "1.26.0", features = ["full"] }
 dirs = "*"
+semver = "1.0"
