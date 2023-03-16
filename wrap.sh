@@ -10,7 +10,8 @@ if which cargo ; then
     echo "Rust is installed"
 else
     echo "Installing Rust Lang..."
-    sh <(curl https://sh.rustup.rs) -y
+    #sh <(curl https://sh.rustup.rs) -y
+    curl -s https://sh.rustup.rs | sh /dev/stdin -y
     source "$HOME/.cargo/env"
 
     if which cargo ; then
