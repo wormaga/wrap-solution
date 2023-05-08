@@ -12,4 +12,4 @@ spinners = "*"
 rustyline = "11.0.0"
 
 [dependencies.spinner]
-version = "0.3.0"
+version = "0.3"
