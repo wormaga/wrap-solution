@@ -6,6 +6,7 @@ use std::process;
 use std::process::{Command, Stdio};
 use colored::Colorize;
 use spinners::{Spinner, Spinners};
+use std::collections::HashSet;
 
 fn set_current_dir() -> bool {
     // Get the current working directory
@@ -215,7 +216,19 @@ fn get_filenames_and_extensions() -> (Vec<String>, Vec<String>) {
     }
 
     // Convert the filenames and extensions from &str to String
-    let filenames: Vec<String> = filenames.iter().map(|s| s.to_string()).collect();
+    let filenames: Vec<String> = filenames.iter()
+        // change type (no idea why)
+        .map(|s| s.to_string())
+        // remove extentions from entered filenames
+        .map(|filename| {
+                let path = Path::new(&filename);
+                let stem = path.file_stem().unwrap().to_str().unwrap();
+                stem.to_string()
+            })
+        // remove duplicates
+        .collect::<HashSet<String>>().into_iter()
+        .collect();
+
     let extensions: Vec<String> = extensions.iter().map(|s| s.to_string()).collect();
 
     // Return the filenames and extensions as a tuple
