@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 colored = "*"
 spinners = "*"
+rustyline = "11.0.0"
 
 [dependencies.spinner]
-version = "0.4.0"
+version = "0.3.1"

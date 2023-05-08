@@ -190,8 +190,18 @@ fn generate_filenames(filenames: Vec<String>, extensions: &Vec<String>) -> Vec<S
 fn get_filenames_and_extensions() -> (Vec<String>, Vec<String>) {
     // Prompt the user for a string of comma-separated filenames
     println!("{}", format!("Enter a list of filenames (separated by commas or spaces):").yellow());
+
     let mut filenames_input = String::new();
-    io::stdin().read_line(&mut filenames_input).unwrap();
+
+    let mut rl = rustyline::DefaultEditor::new();
+    let readline = rl.expect("REASON").readline(">> ");
+    match readline {
+        Ok(line) => filenames_input =  line,
+        Err(_) => println!("No input"),
+    }
+
+
+    // io::stdin().read_line(&mut filenames_input).unwrap();
     let mut filenames: Vec<&str> = filenames_input.split(',').map(|s| s.trim()).collect();
 
     // If the list of filenames has less than two items, try to split the input string by spaces
