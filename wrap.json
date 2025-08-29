@@ -16,6 +16,22 @@
                     "url": "https://raw.githubusercontent.com/wormaga/wrap-solution/main/litegallery/src/main.rs"
                 }
             ]
+        },
+        {
+            "name": "lumixbackup",
+            "version": "0.1.0",
+            "files": [
+                {
+                    "location": "",
+                    "filename": "Cargo.toml",
+                    "url": "https://raw.githubusercontent.com/wormaga/wrap-solution/main/lumixbackup/Cargo.toml"
+                },
+                {
+                    "location": "src",
+                    "filename": "main.rs",
+                    "url": "https://raw.githubusercontent.com/wormaga/wrap-solution/main/lumixbackup/src/main.rs"
+                }
+            ]
         }
     ]
 

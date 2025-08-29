@@ -1,0 +1,15 @@
+[package]
+name = "lumix_backup"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+walkdir = "2.5"
+chrono = { version = "0.4", features = ["serde"] }
+dialoguer = "0.11"
+anyhow = "1.0"
+indicatif = "0.17"
+clap = { version = "4.5.45", features = ["derive"] }
+rayon = "1.11"
+num_cpus = "1.17.0"
+blake3 = "1"
