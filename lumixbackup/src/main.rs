@@ -15,6 +15,16 @@ use walkdir::WalkDir;
 
 const ALLOWED_EXTS: [&str; 3] = ["jpg", "mov", "rw2"];
 
+const SKIP_DIRS: [&str; 5] = [
+    ".Spotlight-V100",
+    ".fseventsd",
+    ".Trashes",
+    ".DocumentRevisions-V100",
+    ".TemporaryItems",
+];
+
+
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
@@ -166,7 +176,15 @@ fn main() -> Result<()> {
 }
 
 fn find_dcim_folder(input_folder: &Path) -> Result<PathBuf> {
-    for entry in WalkDir::new(input_folder).min_depth(1).max_depth(2) {
+    for entry in WalkDir::new(input_folder)
+        .min_depth(1)
+        .max_depth(2)
+        .into_iter()
+        .filter_entry(|e| {
+            let name = e.file_name().to_string_lossy();
+            !SKIP_DIRS.contains(&name.as_ref())
+        })
+    {
         let entry = entry?;
         if entry.file_type().is_dir()
             && entry
@@ -183,7 +201,14 @@ fn find_dcim_folder(input_folder: &Path) -> Result<PathBuf> {
 fn collect_all_files(dcim_path: &Path) -> Result<Vec<FileEntry>> {
     let mut files = Vec::new();
 
-    for entry in WalkDir::new(dcim_path).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(dcim_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let name = e.file_name().to_string_lossy();
+            !SKIP_DIRS.contains(&name.as_ref())
+        })
+    {
         if entry.file_type().is_file() {
             let ext = entry
                 .path()
