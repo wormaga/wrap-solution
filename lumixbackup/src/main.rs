@@ -4,6 +4,7 @@ use chrono::{DateTime, Local};
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
+use rustyline::DefaultEditor; // NEW: line editor (arrow keys, history, etc.)
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
@@ -17,9 +18,9 @@ const ALLOWED_EXTS: [&str; 3] = ["jpg", "mov", "rw2"];
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// Path to Lumix folder
+    /// Path to Lumix folder. If omitted, defaults to /Volumes/LUMIX (must exist)
     #[arg(value_name = "INPUT_FOLDER")]
-    input_folder: PathBuf,
+    input_folder: Option<PathBuf>, // CHANGED: now optional
 
     /// Enable verbose output
     #[arg(short, long)]
@@ -81,7 +82,26 @@ impl Photoshoot {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let input_path = &cli.input_folder;
+    // Determine input path
+    let input_path: PathBuf = match cli.input_folder {
+        Some(p) => p,
+        None => {
+            let default = PathBuf::from("/Volumes/LUMIX");
+            if default.exists() {
+                println!("No INPUT_FOLDER specified. Using default: {}", default.display());
+                default
+            } else {
+                eprintln!(
+                    "No INPUT_FOLDER specified and default '/Volumes/LUMIX' was not found.\n\n"
+                );
+                eprintln!(
+                    "Please run again and provide an input folder, e.g.:\n  lumixbackup /path/to/DCIM_root\n"
+                );
+                std::process::exit(2);
+            }
+        }
+    };
+
     let verbose = cli.verbose;
     let gap_threshold_secs = cli.gap * 60;
 
@@ -117,18 +137,14 @@ fn main() -> Result<()> {
     }
 
     // Display shoots and ask user to select them (example: user enters "1 3" to select shoot 1 and 3)
-    println!("Select shoots to backup (space-separated indexes):");
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
+    let input = read_line_with_editor("Select shoots to backup (space-separated indexes): ")?;
     let selected_indexes: Vec<usize> = input
         .split_whitespace()
         .filter_map(|s| s.parse::<usize>().ok())
         .collect();
 
     // Ask user where to backup
-    let output_folder = get_output_folder();
+    let output_folder = get_output_folder()?;
     if !output_folder.exists() {
         fs::create_dir_all(&output_folder).expect("Failed to create output folder");
     }
@@ -239,48 +255,57 @@ fn detect_photoshoots(
     shoots.push(current_shoot);
 
     Ok(shoots)
-
-    // // Add files of any extention that are within shoot(s) start_time and end_time
-    // let mut expanded_shoots = Vec::new();  // Create a new vector to hold the "expanded" shoots
-    // for mut shoot in shoots {              // Iterate over each photoshoot detected so far
-    //     let start_time = shoot.min_timestamp();  // Earliest timestamp in this shoot
-    //     let end_time = shoot.max_timestamp();    // Latest timestamp in this shoot
-
-    //     for f in all_files {                   // Go through all files in the DCIM folder
-    //         if f.timestamp >= start_time && f.timestamp <= end_time {   // Check if the file falls within the shoot's time range
-    //             if !shoot.files.iter().any(|sf| sf.path == f.path) {   // Only add it if it isn't already in the shoot
-    //                 shoot.add(f.clone());     // Add the file to this shoot
-    //             }
-    //         }
-    //     }
-
-    //     expanded_shoots.push(shoot);           // Add the updated shoot to the result vector
-    // }
-
-    // Ok(expanded_shoots)
 }
 
 // Function to get output folder path from user or use default
-fn get_output_folder() -> PathBuf {
-    println!("");
-    println!(
-        "Enter path to your ssd (or output folder) (leave empty for default './auto-backup'):"
-    );
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
+fn get_output_folder() -> io::Result<PathBuf> {
+    let input = read_line_with_editor(
+        "\nEnter path to your SSD (or output folder) (leave empty for default './auto-backup'): ",
+    )?;
     let input = input.trim();
 
     if input.is_empty() {
-        // PathBuf::from("./backup")
-        PathBuf::from("./auto-backup")
+        Ok(PathBuf::from("./auto-backup"))
     } else {
-        PathBuf::from(input)
+        let unescaped = unescape_backslashes(input);
+        Ok(PathBuf::from(unescaped))
     }
 }
 
-// Function to copy files of a shoot into structured output folder
+/// Read a line using a line editor that supports arrow keys and basic editing.
+fn read_line_with_editor(prompt: &str) -> io::Result<String> {
+    let mut rl = DefaultEditor::new().map_err(to_io_err)?;
+    match rl.readline(prompt) {
+        Ok(line) => Ok(line),
+        Err(err) => Err(to_io_err(err)),
+    }
+}
+
+/// Convert errors from rustyline to std::io::Error
+fn to_io_err<E: std::fmt::Display>(e: E) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, format!("{}", e))
+}
+
+/// Very small unescape helper: treats a backslash as escaping the next character.
+/// This lets users paste shell-escaped paths like "/Volumes/Ana\\ Home/\\*Work\\ in\\ progress".
+fn unescape_backslashes(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(next) = chars.next() {
+                out.push(next);
+            } else {
+                // trailing backslash -> keep it
+                out.push('\\');
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 fn copy_shoot_files(
     shoot: &Photoshoot,
     base_output: &Path,
@@ -289,7 +314,7 @@ fn copy_shoot_files(
 ) -> io::Result<()> {
     let start_dt = shoot.min_timestamp();
     let folder_name = format!(
-        "{}-project_{}",
+        "{}_project_{}",
         start_dt.format("%Y_%m_%d-%H_%M"),
         shoot_index + 1
     );
@@ -320,7 +345,7 @@ fn copy_shoot_files(
     if num_cores <= 2 {
         for ext in extensions {
             let subfolder = shoot_folder.join(&ext);
-            fs::create_dir_all(&subfolder)?; //folder must be already created, by I will leave this
+            fs::create_dir_all(&subfolder)?; // folder must be already created, but keep this safe-guard
             copy_files_by_ext(&shoot.files, &ext, &subfolder, verbose)?;
         }
     } else {
@@ -334,7 +359,7 @@ fn copy_shoot_files(
                 ProgressStyle::default_bar()
                     .template("{spinner:.yellow} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} files copied")
                     .unwrap()
-                    .progress_chars("#>-"),
+                    .progress_chars("#>-")
             );
             Some(Arc::new(Mutex::new(pb)))
         };
@@ -418,7 +443,7 @@ fn copy_files_by_ext(
                     "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}",
                 )
                 .unwrap()
-                .progress_chars("#>-"),
+                .progress_chars("#>-")
         );
         pb.set_message(format!("Copying {} files", ext.to_uppercase()));
         Some(pb)

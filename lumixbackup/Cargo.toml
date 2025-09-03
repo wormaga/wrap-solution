@@ -1,5 +1,5 @@
 [package]
-name = "lumix_backup"
+name = "lumixbackup"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,3 +13,4 @@ clap = { version = "4.5.45", features = ["derive"] }
 rayon = "1.11"
 num_cpus = "1.17.0"
 blake3 = "1"
+rustyline = "17.0.1"
