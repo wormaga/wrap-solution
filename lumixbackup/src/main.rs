@@ -182,7 +182,7 @@ fn find_dcim_folder(input_folder: &Path) -> Result<PathBuf> {
         .into_iter()
         .filter_entry(|e| {
             let name = e.file_name().to_string_lossy();
-            !SKIP_DIRS.contains(&name.as_ref())
+            !name.starts_with('.') && !SKIP_DIRS.contains(&name.as_ref())
         })
     {
         let entry = entry?;
@@ -206,7 +206,7 @@ fn collect_all_files(dcim_path: &Path) -> Result<Vec<FileEntry>> {
         .filter_map(|e| e.ok())
         .filter(|e| {
             let name = e.file_name().to_string_lossy();
-            !SKIP_DIRS.contains(&name.as_ref())
+            !name.starts_with('.') && !SKIP_DIRS.contains(&name.as_ref())
         })
     {
         if entry.file_type().is_file() {
