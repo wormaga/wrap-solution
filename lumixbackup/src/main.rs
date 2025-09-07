@@ -340,7 +340,7 @@ fn copy_shoot_files(
     let start_dt = shoot.min_timestamp();
     let folder_name = format!(
         "{}_project_{}",
-        start_dt.format("%Y_%m_%d-%H_%M"),
+        start_dt.format("%Y-%m-%d_%H_%M"),
         shoot_index + 1
     );
     let shoot_folder = base_output.join(folder_name);
