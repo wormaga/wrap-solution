@@ -293,9 +293,20 @@ fn get_output_folder() -> io::Result<PathBuf> {
         Ok(PathBuf::from("./auto-backup"))
     } else {
         let unescaped = unescape_backslashes(input);
-        Ok(PathBuf::from(unescaped))
+        let expanded = expand_tilde(&unescaped);
+        Ok(PathBuf::from(expanded))
     }
 }
+
+fn expand_tilde(path: &str) -> String {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return path.replacen("~", &home.to_string_lossy(), 1);
+        }
+    }
+    path.to_string()
+}
+
 
 /// Read a line using a line editor that supports arrow keys and basic editing.
 fn read_line_with_editor(prompt: &str) -> io::Result<String> {
