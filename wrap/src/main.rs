@@ -1,15 +1,14 @@
 use reqwest::{Client, Error};
+use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::io;
-use std::process;
 use std::env;
 use std::fs;
-use std::path::Path;
-use std::process::Command;
 use std::fs::File;
-use semver::Version;
+use std::io;
+use std::path::Path;
+use std::process;
+use std::process::Command;
 extern crate reqwest;
-
 
 static BIN: &str = "bin"; //~/bin
 static CLI_PROJECTS: &str = "cli-projects"; //~/cli-projects
@@ -40,9 +39,9 @@ pub struct Asset {
 impl Tool {
     pub fn is_installed(&self) -> bool {
         Command::new(&self.name)
-            .arg("--version")
-            .output()
-            .is_ok()
+        .arg("--version")
+        .output()
+        .is_ok()
     }
 
     pub fn is_update_available(&self) -> bool {
@@ -51,9 +50,9 @@ impl Tool {
         }
 
         let output = Command::new(&self.name)
-            .arg("--version")
-            .output()
-            .unwrap();
+        .arg("--version")
+        .output()
+        .unwrap();
 
         let stdout = String::from_utf8(output.stdout).unwrap();
 
@@ -94,7 +93,7 @@ impl Tool {
         //     return format!("(Latest installed {})", latest_version);
         // }
 
-        return "".to_string()
+        return "".to_string();
     }
 }
 
@@ -103,7 +102,7 @@ impl Product {
         // Print the list of tools with their indices
         println!("Select one or more programs by their number (separated by space):");
         for (i, tool) in self.tools.iter().enumerate() {
-            println!("{}) {} {}", i+1, tool.name, tool.install_description());
+            println!("{}) {} {}", i + 1, tool.name, tool.install_description());
         }
 
         let mut selected_indices: Vec<usize>;
@@ -114,7 +113,7 @@ impl Product {
                 .trim()
                 .split(' ')
                 .map(|x| x.parse::<usize>().unwrap_or(usize::MAX))
-                .filter(|&x| x > 0 && x-1 < self.tools.len())
+                .filter(|&x| x > 0 && x - 1 < self.tools.len())
                 .collect();
             if !selected_indices.is_empty() {
                 break;
@@ -128,7 +127,7 @@ impl Product {
             .tools
             .iter()
             .enumerate()
-            .filter(|(i, _)| selected_indices.contains(&(i+1)))
+            .filter(|(i, _)| selected_indices.contains(&(i + 1)))
             .map(|(_, tool)| tool)
             .collect::<Vec<_>>();
 
@@ -165,79 +164,81 @@ async fn main() -> Result<(), reqwest::Error> {
     Ok(())
 }
 
-
 async fn install_tool(tool: &Tool) {
     //println!("{:#?}", tool); //debug
 
-        let project_name = &tool.name;
+    ensure_rust_up_to_date();
 
-        let home_dir = dirs::home_dir().expect("failed to get home directory");
-        let bin_dir = home_dir.join(BIN);
-        let cli_projects_dir = home_dir.join(CLI_PROJECTS);
+    let project_name = &tool.name;
 
-        set_current_directory(&bin_dir);
-        set_current_directory(&cli_projects_dir);
+    let home_dir = dirs::home_dir().expect("failed to get home directory");
+    let bin_dir = home_dir.join(BIN);
+    let cli_projects_dir = home_dir.join(CLI_PROJECTS);
 
-        //deleting existing project code
-        let tool_dir = cli_projects_dir.join(&project_name);
-        if tool_dir.exists() {
-            delete_folder(&tool_dir).expect("failed to delete litegallery directory");
-            println!("Deleted existing {} project folder.", &project_name);
-        }
+    set_current_directory(&bin_dir);
+    set_current_directory(&cli_projects_dir);
 
-        // create a new rust project
-        println!("Creating a new rust project");
-        let output = Command::new("cargo")
+    //deleting existing project code
+    let tool_dir = cli_projects_dir.join(&project_name);
+    if tool_dir.exists() {
+        delete_folder(&tool_dir).expect("failed to delete litegallery directory");
+        println!("Deleted existing {} project folder.", &project_name);
+    }
+
+    // create a new rust project
+    println!("Creating a new rust project");
+    let output = Command::new("cargo")
         .arg("new")
         .arg(&project_name)
         .output()
         .expect("failed create a new cargo project.");
-        println!("{}", String::from_utf8_lossy(&output.stdout));
+    println!("{}", String::from_utf8_lossy(&output.stdout));
 
-        //go inside the project
-        set_current_directory(&tool_dir);
+    //go inside the project
+    set_current_directory(&tool_dir);
 
-        println!("Downloading up to date files from github");
-        for asset in &tool.files {
-            set_current_directory(&(tool_dir.join(&asset.location)));
+    println!("Downloading up to date files from github");
+    for asset in &tool.files {
+        set_current_directory(&(tool_dir.join(&asset.location)));
 
+        download_file(&asset.url, &asset.filename)
+            .await
+            .expect("failed to download file.");
+    }
+    println!("All files downlaoded.");
 
-            download_file(&asset.url, &asset.filename).await.expect("failed to download file.");
-        }
-        println!("All files downlaoded.");
+    //go inside the project
+    set_current_directory(&tool_dir);
 
-        //go inside the project
-        set_current_directory(&tool_dir);
-
-        let output = Command::new("pwd")
+    let output = Command::new("pwd")
         .output()
         .expect("failed compile a project.");
-        println!("{}", String::from_utf8_lossy(&output.stdout));
+    println!("{}", String::from_utf8_lossy(&output.stdout));
 
-        println!("Compiling program {}", &project_name);
-        let output = Command::new("cargo")
-            .arg("build")
-            .arg("--release")
-            .output()
-            .expect("failed compile a project.");
+    println!("Compiling program {}", &project_name);
+    let output = Command::new("cargo")
+        .arg("build")
+        .arg("--release")
+        .output()
+        .expect("failed compile a project.");
 
-        println!("{}", String::from_utf8_lossy(&output.stdout));
-        if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr);
-            eprintln!("Cargo build failed: {}", error_message);
-            std::process::exit(1);
-        }
+    println!("{}", String::from_utf8_lossy(&output.stdout));
+    if !output.status.success() {
+        let error_message = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Cargo build failed: {}", error_message);
+        std::process::exit(1);
+    }
 
-        //move compiled program to ${HOME}/bin folder
-        println!("Coping program {} to ~/bin folder", &project_name);
-        let output = Command::new("cp")
-        .arg(&format!("target/release/{}",&project_name))
+    //move compiled program to ${HOME}/bin folder
+    println!("Coping program {} to ~/bin folder", &project_name);
+    let output = Command::new("cp")
+        .arg(&format!("target/release/{}", &project_name))
         .arg(&bin_dir)
         .output()
         .expect("failed compile a project.");
-        println!("{}", String::from_utf8_lossy(&output.stdout));
+    println!("{}", String::from_utf8_lossy(&output.stdout));
 
-        println!("{} is installed.", &project_name);
+    println!("{} is installed.", &project_name);
 }
 
 fn set_current_directory(dir: &Path) {
@@ -250,14 +251,12 @@ fn set_current_directory(dir: &Path) {
     env::set_current_dir(&dir).expect("failed to change directory");
 }
 
-
 fn delete_folder(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     // Delete the folder
     fs::remove_dir_all(dir)?;
 
     Ok(())
 }
-
 
 async fn download_file(url: &str, filename: &str) -> Result<(), Error> {
     let resp = reqwest::get(url).await.expect("request failed");
@@ -267,4 +266,33 @@ async fn download_file(url: &str, filename: &str) -> Result<(), Error> {
     io::copy(&mut body.as_bytes(), &mut out).expect("failed to copy content");
 
     Ok(())
+}
+
+fn ensure_rust_up_to_date() {
+    use std::process::Command;
+
+    // Check rustc version
+    let output = Command::new("rustc")
+        .arg("--version")
+        .output()
+        .expect("Failed to run rustc");
+
+    let version_str = String::from_utf8_lossy(&output.stdout);
+    println!("Current Rust version: {}", version_str.trim());
+
+    // Optionally parse the version number and compare with a minimum
+    // For simplicity, just update Rust every time
+    println!("Updating Rust toolchain...");
+    let status = Command::new("rustup")
+        .arg("update")
+        .arg("stable")
+        .status()
+        .expect("Failed to update Rust via rustup");
+
+    if !status.success() {
+        eprintln!("Rust update failed. Please update manually.");
+        std::process::exit(1);
+    }
+
+    println!("Rust is up to date!");
 }
