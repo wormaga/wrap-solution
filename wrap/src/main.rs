@@ -77,8 +77,13 @@ impl Tool {
             .unwrap();
 
         let stdout = String::from_utf8(output.stdout).unwrap();
+        let stdout = stdout.trim();
 
-        let installed_version = Version::parse(stdout.trim()).unwrap();
+        let installed_version = stdout
+            .split_whitespace() // split by spaces
+            .find_map(|s| Version::parse(s).ok()) // take the first valid semver
+            .expect(&format!("Failed to parse instslled tool version from output: {}", stdout));
+
         let latest_version = Version::parse(&self.version).unwrap();
 
         if installed_version < latest_version {
