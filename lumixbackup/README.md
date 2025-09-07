@@ -48,3 +48,28 @@ Select shoots to backup (space-separated indexes): 1 2
 
 Enter output folder path [default: ./auto-backup]: ~/Pictures/Backups
 ```
+
+Using custom time for detecting separate photoshoots (in minutes)
+```bash
+$ lumixbackup /Volumes/SdCard --gap 60
+```
+
+Using verbose output for debugging problems
+```bash
+$ lumixbackup /Volumes/SdCard --verbose
+```
+
+Get info (docs may be not up to date, sorry)
+```bash
+$ lumixbackup  --help
+Usage: lumixbackup.exe [OPTIONS] [INPUT_FOLDER]
+
+Arguments:
+  [INPUT_FOLDER]  Path to Lumix folder. If omitted, defaults to /Volumes/LUMIX (must exist)
+
+Options:
+  -v, --verbose    Enable verbose output
+  -g, --gap <GAP>  Gap threshold in minutes (default: 120) [default: 120]
+  -h, --help       Print help
+  -V, --version    Print version
+```
