@@ -5,6 +5,7 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use rustyline::DefaultEditor; // NEW: line editor (arrow keys, history, etc.)
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
@@ -22,8 +23,6 @@ const SKIP_DIRS: [&str; 5] = [
     ".DocumentRevisions-V100",
     ".TemporaryItems",
 ];
-
-
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -144,6 +143,18 @@ fn main() -> Result<()> {
             counts.join(" | "),
             shoot.files.len()
         );
+    }
+
+    for (i, shoot) in shoots.iter().enumerate() {
+        let duplicates = check_for_duplicates(shoot);
+        if !duplicates.is_empty() {
+            eprintln!("\n❌ ERROR: Shoot {} has duplicate filenames:", i + 1);
+            for (ext, name, count) in duplicates {
+                eprintln!("   {} ({} times) in {}", name, count, ext.to_uppercase());
+            }
+            eprintln!("\nPlease resolve duplicate filenames before running the backup.");
+            std::process::exit(3);
+        }
     }
 
     // Display shoots and ask user to select them (example: user enters "1 3" to select shoot 1 and 3)
@@ -306,7 +317,6 @@ fn expand_tilde(path: &str) -> String {
     }
     path.to_string()
 }
-
 
 /// Read a line using a line editor that supports arrow keys and basic editing.
 fn read_line_with_editor(prompt: &str) -> io::Result<String> {
@@ -479,7 +489,7 @@ fn copy_files_by_ext(
                     "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}",
                 )
                 .unwrap()
-                .progress_chars("#>-")
+                .progress_chars("#>-"),
         );
         pb.set_message(format!("Copying {} files", ext.to_uppercase()));
         Some(pb)
@@ -536,4 +546,30 @@ fn file_checksum(path: &Path) -> io::Result<blake3::Hash> {
     }
 
     Ok(hasher.finalize())
+}
+
+/// Check for duplicate filenames inside a photoshoot.
+/// Returns a list of (extension, filename, count).
+fn check_for_duplicates(shoot: &Photoshoot) -> Vec<(String, String, usize)> {
+    let mut seen: HashMap<(String, String), usize> = HashMap::new();
+    for file in &shoot.files {
+        let ext = file
+            .path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let name = file
+            .path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        *seen.entry((ext.clone(), name.clone())).or_insert(0) += 1;
+    }
+
+    seen.into_iter()
+        .filter(|(_, count)| *count > 1)
+        .map(|((ext, name), count)| (ext, name, count))
+        .collect()
 }
