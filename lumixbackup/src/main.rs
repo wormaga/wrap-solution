@@ -89,6 +89,13 @@ impl Photoshoot {
 }
 
 fn main() -> Result<()> {
+
+    //wrap is expecting only digits version output, so handling it before "clap" library starts (Cli::parse();)
+    if std::env::args().any(|arg| arg == "--version" || arg == "-V" || arg == "-v") {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     let cli = Cli::parse();
 
     // Determine input path
