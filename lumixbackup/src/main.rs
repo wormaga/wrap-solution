@@ -296,12 +296,12 @@ fn detect_photoshoots(
 // Function to get output folder path from user or use default
 fn get_output_folder() -> io::Result<PathBuf> {
     let input = read_line_with_editor(
-        "\nEnter path to your SSD (or output folder) (leave empty for default './auto-backup'): ",
+        "\nEnter path to your SSD (or output folder) (leave empty for default '/Volumes/Ana Home/*Work in progress'): ",
     )?;
     let input = input.trim();
 
     if input.is_empty() {
-        Ok(PathBuf::from("./auto-backup"))
+        Ok(PathBuf::from("/Volumes/Ana Home/*Work in progress"))
     } else {
         let unescaped = unescape_backslashes(input);
         let expanded = expand_tilde(&unescaped);
