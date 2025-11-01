@@ -367,7 +367,7 @@ fn copy_shoot_files(
 ) -> io::Result<()> {
     let start_dt = shoot.min_timestamp();
     let folder_name = format!(
-        "{}_project_{}",
+        "{} project_{}",
         start_dt.format("%Y-%m-%d_%H_%M"),
         shoot_index + 1
     );
