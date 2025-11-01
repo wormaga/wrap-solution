@@ -1,0 +1,9 @@
+[package]
+name = "mousewalk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+enigo = "0.6.1"
+rdev = "0.5.0"
+winit = "0.30.12"
