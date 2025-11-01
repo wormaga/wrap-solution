@@ -89,6 +89,13 @@ impl Photoshoot {
 }
 
 fn main() -> Result<()> {
+
+    //wrap is expecting only digits version output, so handling it before "clap" library starts (Cli::parse();)
+    if std::env::args().any(|arg| arg == "--version" || arg == "-V" || arg == "-v") {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     let cli = Cli::parse();
 
     // Determine input path
@@ -296,12 +303,12 @@ fn detect_photoshoots(
 // Function to get output folder path from user or use default
 fn get_output_folder() -> io::Result<PathBuf> {
     let input = read_line_with_editor(
-        "\nEnter path to your SSD (or output folder) (leave empty for default './auto-backup'): ",
+        "\nEnter path to your SSD (or output folder) (leave empty for default '/Volumes/Ana Home/*Work in progress'): ",
     )?;
     let input = input.trim();
 
     if input.is_empty() {
-        Ok(PathBuf::from("./auto-backup"))
+        Ok(PathBuf::from("/Volumes/Ana Home/*Work in progress"))
     } else {
         let unescaped = unescape_backslashes(input);
         let expanded = expand_tilde(&unescaped);
@@ -360,7 +367,7 @@ fn copy_shoot_files(
 ) -> io::Result<()> {
     let start_dt = shoot.min_timestamp();
     let folder_name = format!(
-        "{}_project_{}",
+        "{} project_{}",
         start_dt.format("%Y-%m-%d_%H_%M"),
         shoot_index + 1
     );
